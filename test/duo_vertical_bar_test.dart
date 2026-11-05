@@ -343,6 +343,92 @@ void main() {
     });
   });
 
+  group('DuoLayout: the system bar region', () {
+    // Measured on the iOS 27.2 simulator, inner display.
+    const idle = SystemVerticalBarRegion(top: 124, bottom: 34);
+
+    DuoPose poseWith(SystemVerticalBarRegion region) => DuoLayout.resolvePose(
+      duoPadding,
+      SystemVerticalBarEdge.right,
+      region,
+    )!;
+
+    test('with no Live Activity, controls start where the system says', () {
+      expect(
+        DuoLayout.topClearance(
+          size: duoLandscape,
+          pose: poseWith(idle),
+          regions: const [duoCamera, duoFlatFold],
+        ),
+        124,
+      );
+    });
+
+    test('Live Activities push the controls down below the cluster', () {
+      // The occlusion region still covers only the camera.
+      expect(
+        DuoLayout.topClearance(
+          size: duoLandscape,
+          pose: poseWith(const SystemVerticalBarRegion(top: 215, bottom: 34)),
+          regions: const [duoCamera, duoFlatFold],
+        ),
+        215,
+      );
+    });
+
+    test('a camera region reaching further down still wins', () {
+      expect(
+        DuoLayout.topClearance(
+          size: duoLandscape,
+          pose: poseWith(const SystemVerticalBarRegion(top: 80, bottom: 34)),
+          regions: const [duoCamera],
+        ),
+        120,
+      );
+    });
+
+    test('no fallback height is needed once the region is known', () {
+      expect(
+        DuoLayout.topClearance(
+          size: duoLandscape,
+          pose: poseWith(idle),
+          regions: const [],
+        ),
+        124,
+      );
+    });
+
+    test('the bottom keeps the measured margins', () {
+      expect(
+        DuoLayout.barInsets(
+          size: duoLandscape,
+          pose: poseWith(idle),
+          regions: const [duoCamera],
+        ).bottom,
+        kDuoBarEdgeMargin,
+      );
+    });
+
+    test('the pose changes when the region does, so the bar rebuilds', () {
+      expect(
+        poseWith(idle),
+        isNot(poseWith(const SystemVerticalBarRegion(top: 215, bottom: 34))),
+      );
+      expect(poseWith(idle), poseWith(idle));
+    });
+
+    test('readings are parsed from the channel', () {
+      const reading = {'edge': 'right', 'top': 124.0, 'bottom': 34};
+      expect(
+        SystemVerticalBarEdge.fromWire(reading),
+        SystemVerticalBarEdge.right,
+      );
+      expect(SystemVerticalBarRegion.fromWire(reading), idle);
+      expect(SystemVerticalBarRegion.fromWire({'edge': 'none'}), isNull);
+      expect(SystemVerticalBarRegion.fromWire('right'), isNull);
+    });
+  });
+
   group('DuoVerticalBar', () {
     Future<void> pumpBar(WidgetTester tester, DuoVerticalBar bar) {
       return tester.pumpWidget(

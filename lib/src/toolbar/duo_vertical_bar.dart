@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/cupertino.dart';
@@ -41,6 +42,7 @@ class DuoPose {
     required this.side,
     required this.stripWidth,
     required this.reservedBySystem,
+    this.systemRegion,
   });
 
   final DuoBarSide side;
@@ -53,6 +55,11 @@ class DuoPose {
   /// wants a vertical bar there, but only adds its inset for bars it draws
   /// itself, never for a Flutter view.
   final bool reservedBySystem;
+
+  /// UIKit's layout region for a bar on this edge, or null before iOS 27.1
+  /// and until the first reading arrives. The bar's controls stay inside it,
+  /// which keeps them clear of the status cluster and its Live Activities.
+  final SystemVerticalBarRegion? systemRegion;
 
   bool get onLeft => side == DuoBarSide.left;
 
@@ -71,15 +78,18 @@ class DuoPose {
       other is DuoPose &&
       other.side == side &&
       other.stripWidth == stripWidth &&
-      other.reservedBySystem == reservedBySystem;
+      other.reservedBySystem == reservedBySystem &&
+      other.systemRegion == systemRegion;
 
   @override
-  int get hashCode => Object.hash(side, stripWidth, reservedBySystem);
+  int get hashCode =>
+      Object.hash(side, stripWidth, reservedBySystem, systemRegion);
 
   @override
   String toString() =>
       '${side.name} ${stripWidth.toStringAsFixed(0)}pt '
-      '(${reservedBySystem ? 'system strip' : 'bar-only strip'})';
+      '(${reservedBySystem ? 'system strip' : 'bar-only strip'}'
+      '${systemRegion == null ? '' : ', bar region $systemRegion'})';
 }
 
 /// Layout decisions for iPhone Duo.
@@ -92,10 +102,14 @@ abstract final class DuoLayout {
   /// only signal there. The insets win because they arrive with the frame,
   /// while the edge comes on its own channel and can be a frame stale after a
   /// pane move.
+  ///
+  /// [region] is the system's layout region for the bar, which the pose
+  /// carries to [barInsets].
   static DuoPose? resolvePose(
     EdgeInsets viewPadding,
-    SystemVerticalBarEdge edge,
-  ) {
+    SystemVerticalBarEdge edge, [
+    SystemVerticalBarRegion? region,
+  ]) {
     final side =
         barSide(viewPadding) ??
         switch (edge) {
@@ -111,6 +125,7 @@ abstract final class DuoLayout {
       side: side,
       stripWidth: inset > 0 ? inset : kDuoVerticalBarWidth,
       reservedBySystem: inset > 0,
+      systemRegion: region,
     );
   }
 
@@ -191,6 +206,19 @@ abstract final class DuoLayout {
         final room = size.height - region.bounds.top + kDuoBarRegionGap;
         if (bottom == null || room > bottom) bottom = room;
       }
+    }
+
+    // The status cluster under the camera grows downwards with every Live
+    // Activity stacked in it, which no occlusion region covers. UIKit's layout
+    // region for the bar follows it, so the controls start below whichever
+    // reaches further down. With the region known, the fallback below is not
+    // needed either.
+    final system = pose.systemRegion;
+    if (system != null) {
+      return (
+        top: math.max(system.top, top ?? kDuoBarEdgeMargin),
+        bottom: bottom ?? kDuoBarEdgeMargin,
+      );
     }
 
     // Every system-reserved strip has the camera or the status cluster

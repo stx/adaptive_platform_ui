@@ -1,5 +1,8 @@
 # Changelog
 
+## [Unreleased]
+* **FIX**: iPhone Duo: the vertical bar's controls no longer sit under the status cluster when Live Activities are showing. Each Live Activity stacked under the camera pushes the time and Wi-Fi down, and the bar used to start below the camera's occlusion region (or a fixed 170 pt before one was reported), so its first control ended up under them. The bar now also keeps inside UIKit's layout region for a bar on that edge (`UIViewLayoutRegion.layoutRegionForBar(onEdge:extent:)`, iOS 27.1), which the plugin streams with the vertical bar edge and which follows Live Activities as they start and end
+
 ## [1.0.2]
 * **FIX**: iOS 26: the fixed toolbar's automatic back button is now a 44-point circle like the native one, instead of a 38-point rounded square, and sits level with the title. The page-owned toolbar's back button is circular too (@Anderzzon, #171)
 * **FIX**: iPhone Duo: in Split View, an app in the left pane now shows its controls and tab bar in a vertical bar on the left edge, as native apps do. It used to fall back to horizontal bars. The side now comes from the system's vertical bar edge (iOS 27.1) instead of the safe-area insets alone (@sergi-labhouse)

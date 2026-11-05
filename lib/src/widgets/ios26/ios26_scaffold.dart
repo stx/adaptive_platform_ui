@@ -88,6 +88,9 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
   /// has no host to ask. Null off iOS 26, where no channel answers.
   ValueListenable<SystemVerticalBarEdge>? _edge;
 
+  /// The system's layout region for the bar, for the same reason.
+  ValueListenable<SystemVerticalBarRegion?>? _region;
+
   @override
   void initState() {
     super.initState();
@@ -102,6 +105,7 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
     _listenToFold();
     if (PlatformInfo.isIOS26OrHigher()) {
       _edge = SystemVerticalBar.edge..addListener(_onEdgeChanged);
+      _region = SystemVerticalBar.region..addListener(_onEdgeChanged);
     }
   }
 
@@ -126,6 +130,7 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
   @override
   void dispose() {
     _edge?.removeListener(_onEdgeChanged);
+    _region?.removeListener(_onEdgeChanged);
     _foldSub?.cancel();
     _tabBarController.dispose();
     super.dispose();
@@ -300,6 +305,7 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
             widget.debugVerticalBarEdge ??
                 _edge?.value ??
                 SystemVerticalBarEdge.unknown,
+            _region?.value,
           );
     final duoVerticalPose = pose != null;
     if (chrome == null &&

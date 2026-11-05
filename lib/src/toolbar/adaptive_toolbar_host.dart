@@ -63,6 +63,10 @@ class _AdaptiveToolbarHostState extends State<AdaptiveToolbarHost>
   /// and in tests, where no platform channel answers.
   ValueListenable<SystemVerticalBarEdge>? _edge;
 
+  /// The system's layout region for the bar, which moves with the status
+  /// cluster as Live Activities start and end.
+  ValueListenable<SystemVerticalBarRegion?>? _region;
+
   /// What the debug log last reported, to print only the changes.
   SystemVerticalBarEdge _loggedEdge = SystemVerticalBarEdge.unknown;
   DuoPose? _loggedPose;
@@ -81,6 +85,7 @@ class _AdaptiveToolbarHostState extends State<AdaptiveToolbarHost>
       // The side the bar belongs on comes from the system, not from insets:
       // the leading Split View pane has none to read.
       _edge = SystemVerticalBar.edge..addListener(_onEdgeChanged);
+      _region = SystemVerticalBar.region..addListener(_onEdgeChanged);
     }
   }
 
@@ -97,6 +102,7 @@ class _AdaptiveToolbarHostState extends State<AdaptiveToolbarHost>
   @override
   void dispose() {
     _edge?.removeListener(_onEdgeChanged);
+    _region?.removeListener(_onEdgeChanged);
     _foldSub?.cancel();
     _blend.dispose();
     _registry.dispose();
@@ -116,7 +122,11 @@ class _AdaptiveToolbarHostState extends State<AdaptiveToolbarHost>
         SystemVerticalBarEdge.unknown;
     // Resolved once: the bar, the title and the pages all read this decision.
     final pose = hostsToolbar
-        ? DuoLayout.resolvePose(MediaQuery.viewPaddingOf(context), edge)
+        ? DuoLayout.resolvePose(
+            MediaQuery.viewPaddingOf(context),
+            edge,
+            _region?.value,
+          )
         : null;
     assert(() {
       // Pose bugs only reproduce on a Duo; this makes a report actionable.
